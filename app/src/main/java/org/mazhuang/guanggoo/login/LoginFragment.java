@@ -36,6 +36,7 @@ public class LoginFragment extends BaseFragment<LoginContract.Presenter>
     @BindView(R.id.login_web_view) WebView mWebView;
 
     private boolean mLoginHandled;
+    private int mLoginProbeCount;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -78,6 +79,19 @@ public class LoginFragment extends BaseFragment<LoginContract.Presenter>
         });
 
         mWebView.loadUrl(ConstantUtil.LOGIN_URL);
+        // The redesigned site can complete login via AJAX without changing
+        // the URL or firing another page-finished callback.
+        mWebView.postDelayed(() -> probeLoginPage(), 600);
+    }
+
+    private void probeLoginPage() {
+        if (mLoginHandled || mWebView == null || mLoginProbeCount++ >= 40) {
+            return;
+        }
+        tryCompleteLogin(mWebView.getUrl());
+        if (!mLoginHandled) {
+            mWebView.postDelayed(() -> probeLoginPage(), 500);
+        }
     }
 
     private boolean isGuozaokeUrl(String url) {
@@ -86,7 +100,7 @@ public class LoginFragment extends BaseFragment<LoginContract.Presenter>
     }
 
     private void tryCompleteLogin(String url) {
-        if (mLoginHandled || ConstantUtil.LOGIN_URL.equals(url)) {
+        if (mLoginHandled) {
             return;
         }
 
