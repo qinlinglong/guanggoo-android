@@ -127,7 +127,7 @@ public class LoginFragment extends BaseFragment<LoginContract.Presenter>
     }
 
     private void readUserInfoFromPage() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT || mWebView == null || mLoginHandled) {
             onLoginFailed(getString(R.string.error_happened));
             return;
         }
@@ -168,7 +168,11 @@ public class LoginFragment extends BaseFragment<LoginContract.Presenter>
 
     private void retryUserInfo() {
         if (!mLoginHandled && mWebView != null) {
-            mWebView.postDelayed(() -> readUserInfoFromPage(), 500);
+            mWebView.postDelayed(() -> {
+                if (!mLoginHandled && mWebView != null) {
+                    readUserInfoFromPage();
+                }
+            }, 500);
         }
     }
 
