@@ -123,7 +123,6 @@ public class LoginFragment extends BaseFragment<LoginContract.Presenter>
             return;
         }
 
-        mLoginHandled = true;
         readUserInfoFromPage();
     }
 
@@ -150,20 +149,27 @@ public class LoginFragment extends BaseFragment<LoginContract.Presenter>
                     JSONObject user = new JSONObject(decoded);
                     String username = user.optString("username", "");
                     if (TextUtils.isEmpty(username)) {
-                        onLoginFailed(getString(R.string.error_happened));
+                        retryUserInfo();
                         return;
                     }
+                    mLoginHandled = true;
                     AuthInfoManager.getInstance().setUsername(username);
                     AuthInfoManager.getInstance().setAvatar(user.optString("avatar", ""));
                     onLoginSucceed("");
                     return;
                 }
             } catch (JSONException e) {
-                onLoginFailed(getString(R.string.error_happened));
+                retryUserInfo();
                 return;
             }
-            onLoginFailed(getString(R.string.error_happened));
+            retryUserInfo();
         });
+    }
+
+    private void retryUserInfo() {
+        if (!mLoginHandled && mWebView != null) {
+            mWebView.postDelayed(() -> readUserInfoFromPage(), 500);
+        }
     }
 
     @Override
@@ -193,7 +199,10 @@ public class LoginFragment extends BaseFragment<LoginContract.Presenter>
         }
         mListener.onLoginStatusChanged(true);
         if (getFragmentManager() != null) {
-            getFragmentManager().popBackStack();
+            // Remove the WebView fragment synchronously before opening the
+            // pending native page; otherwise the async pop can win the
+            // transaction race and leave the user on the login screen.
+            getFragmentManager().popBackStackImmediate();
         }
         if (!ConstantUtil.LOGIN_URL.equals(mUrl)) {
             mListener.openPage(mUrl, mTitle);
