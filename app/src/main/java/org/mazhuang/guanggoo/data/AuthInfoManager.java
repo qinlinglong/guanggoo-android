@@ -1,6 +1,8 @@
 package org.mazhuang.guanggoo.data;
 
 import android.text.TextUtils;
+import android.os.Build;
+import android.webkit.CookieManager;
 
 import org.mazhuang.guanggoo.App;
 import org.mazhuang.guanggoo.util.ConstantUtil;
@@ -53,6 +55,12 @@ public class AuthInfoManager {
     public synchronized void clearAuthInfo() {
         PrefsUtil.putString(App.getInstance(), ConstantUtil.KEY_COOKIE, "");
         PrefsUtil.putString(App.getInstance(), ConstantUtil.KEY_XSRF, "");
+        CookieManager cookieManager = CookieManager.getInstance();
+        cookieManager.setCookie(ConstantUtil.BASE_URL, "user=; Max-Age=0; Path=/; Secure");
+        cookieManager.setCookie(ConstantUtil.BASE_URL, "_xsrf=; Max-Age=0; Path=/; Secure");
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            cookieManager.flush();
+        }
         username = null;
         avatar = null;
     }
