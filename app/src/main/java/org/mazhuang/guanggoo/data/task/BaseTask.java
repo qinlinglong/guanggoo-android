@@ -3,6 +3,7 @@ package org.mazhuang.guanggoo.data.task;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.TextUtils;
+import android.webkit.CookieManager;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -91,6 +92,7 @@ public abstract class BaseTask<T> implements Runnable {
 
     protected Map<String, String> getCookies() {
         Map<String, String> cookies = new HashMap<>();
+        syncWebViewCookies();
         String cookieString = PrefsUtil.getString(App.getInstance(), ConstantUtil.KEY_COOKIE, "");
         if (!TextUtils.isEmpty(cookieString)) {
 
@@ -108,6 +110,38 @@ public abstract class BaseTask<T> implements Runnable {
         }
 
         return cookies;
+    }
+
+    /**
+     * The redesigned login runs in WebView. Its cookies survive an app restart,
+     * but older builds only copied them after the login callback, leaving the
+     * native side apparently logged out. Import the browser cookie jar before
+     * every native request so an existing WebView session is restored too.
+     */
+    private void syncWebViewCookies() {
+        String header = CookieManager.getInstance().getCookie(ConstantUtil.BASE_URL);
+        if (TextUtils.isEmpty(header) || !header.contains("user=")) {
+            return;
+        }
+        try {
+            JSONObject json = new JSONObject();
+            for (String item : header.split(";")) {
+                String cookie = item.trim();
+                int separator = cookie.indexOf('=');
+                if (separator > 0) {
+                    json.put(cookie.substring(0, separator), cookie.substring(separator + 1));
+                }
+            }
+            if (json.has("user")) {
+                PrefsUtil.putString(App.getInstance(), ConstantUtil.KEY_COOKIE, json.toString());
+                if (json.has(ConstantUtil.KEY_XSRF)) {
+                    PrefsUtil.putString(App.getInstance(), ConstantUtil.KEY_XSRF,
+                            json.optString(ConstantUtil.KEY_XSRF));
+                }
+            }
+        } catch (JSONException ignored) {
+            // Keep the previously persisted native cookies if WebView data is malformed.
+        }
     }
 
     protected String getCookieValue(String key) {
